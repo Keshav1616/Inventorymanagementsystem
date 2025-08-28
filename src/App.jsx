@@ -1,75 +1,68 @@
-import React, { useState } from "react";
-import Navbar from './Components/Navbar.jsx';
-import Sidebar from './Components/Sidebar.jsx';
-import Dashboard from './Components/Dashboard.jsx';
-import InventoryTable from './Components/InventoryTable.jsx';
-import PurchaseOrders from './Components/PurchaseOrders.jsx';
-import CommandPalette from './Components/CommandPallete.jsx';
-import Toasts from './Components/Toasts.jsx';
-import usePersistedState from './Hooks/usePersistedState.js';
-import seed from './utils/seedData.js';
-import { uid } from './utils/helpers.js';
+import React, { useState } from 'react';
+import Login from './Components/Login.jsx';
+import AdminDashboard from './Components/AdminDashboard.jsx';
+import EmployeeDashboard from './Components/EmployeeDashboard.jsx';
+
+// password for employee login is password:- employee123, username:-employee
+
+// password for admin login is password:- admin123, username:-admin
+
+const users = {
+  admin: { role: 'admin', password: 'admin123' },
+  employee: { role: 'employee', password: 'emp123' },
+};
 
 export default function App() {
-  const [state, setState] = usePersistedState(seed);
-  const [tab, setTab] = useState("dashboard");
-  const [toasts, setToasts] = useState([]);
-  const [commandOpen, setCommandOpen] = useState(false);
+  const [role, setRole] = useState(null);
+  const [products, setProducts] = useState([
+    { id: 1, name: 'Laptop', cost: 40000, price: 50000, stock: 10 },
+    { id: 2, name: 'Phone', cost: 10000, price: 15000, stock: 20 },
+  ]);
+  const [bill, setBill] = useState([]);
 
-  const pushToast = (msg, variant = "default") => {
-    setToasts((arr) => [...arr, { id: uid(), message: msg, variant }]);
+  const handleLogin = (username, password) => {
+    if (users[username]?.password === password) setRole(users[username].role);
+    else alert('Invalid credentials!');
   };
 
-  const addItem = () => {
-    const item = {
-      id: uid(),
-      name: "New Item",
-      sku: "SKU-" + Math.floor(Math.random() * 999),
-      qty: 0,
-      cost: 1,
-      price: 2,
-    };
-    setState({ ...state, items: [item, ...state.items] });
-    pushToast("Item created ✅", "success");
+  const addProduct = (prod) => {
+    if (!prod.name || prod.cost < 0 || prod.price < 0 || prod.stock < 0) {
+      alert('Invalid product details!');
+      return;
+    }
+    setProducts([...products, { ...prod, id: products.length + 1 }]);
   };
 
-  const addPO = () => {
-    const po = {
-      id: uid(),
-      code: "PO-" + Math.floor(1000 + Math.random() * 9000),
-      status: "Draft",
-    };
-    setState({ ...state, purchaseOrders: [po, ...state.purchaseOrders] });
-    pushToast("New Purchase Order created 📦", "success");
+  const generateBill = (pid, qty) => {
+    const p = products.find((x) => x.id === pid);
+    if (!p || qty <= 0 || qty > p.stock) {
+      alert('Invalid quantity!');
+      return;
+    }
+    setBill([...bill, { name: p.name, qty, total: p.price * qty }]);
   };
+
+  if (!role) return <Login onLogin={handleLogin} />;
 
   return (
-    <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
-      <Sidebar tab={tab} setTab={setTab} />
-      <div className="flex-1 flex flex-col">
-        <Navbar setCommandOpen={setCommandOpen} />
-        <main className="p-6 overflow-auto">
-          {tab === "dashboard" && <Dashboard state={state} />}
-          {tab === "inventory" && (
-            <InventoryTable state={state} setState={setState} />
-          )}
-          {tab === "purchases" && (
-            <PurchaseOrders state={state} setState={setState} />
-          )}
-        </main>
-      </div>
-      <CommandPalette
-        open={commandOpen}
-        setOpen={setCommandOpen}
-        actions={[
-          { id: "new-item", label: "➕ New Item", run: addItem },
-          { id: "new-po", label: "📦 New Purchase Order", run: addPO },
-        ]}
-      />
-      <Toasts
-        toasts={toasts}
-        remove={(id) => setToasts((t) => t.filter((x) => x.id !== id))}
-      />
+    <div className="flex min-h-screen bg-gray-100">
+      {/* Sidebar */}
+      <nav className="w-64 bg-white shadow-md p-4">
+        <h2 className="text-lg font-bold mb-4">Dashboard ({role})</h2>
+        <button onClick={() => setRole(null)}
+          className="w-full bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">
+          Logout
+        </button>
+      </nav>
+
+      {/* Main */}
+      <main className="flex-1 p-6">
+        {role === 'admin' ? (
+          <AdminDashboard products={products} onAdd={addProduct} />
+        ) : (
+          <EmployeeDashboard products={products} bill={bill} onBill={generateBill} />
+        )}
+      </main>
     </div>
   );
 }
